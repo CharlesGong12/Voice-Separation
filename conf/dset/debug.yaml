@@ -3,5 +3,5 @@
 train: egs/debug/tr
 valid: egs/debug/tr
 test: egs/debug/tr
-mix_json: egs/debug/tr/mix.json
+mix_json: egs/debug/tr/mix.json # only for test
 mix_dir:

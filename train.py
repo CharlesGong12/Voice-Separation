@@ -1,9 +1,4 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-# Authors: Yossi Adi (adiyoss) and  Alexandre Défossez (adefossez)
+
 
 import json
 import logging
@@ -37,6 +32,9 @@ def run(args):
         kwargs['sr'] = args.sample_rate
         kwargs['segment'] = args.segment
         model = SWave(**kwargs)
+        # calculate number of parameters
+        # num_params = sum(p.numel() for p in model.parameters())
+        # print(f'The model has {num_params} trainable parameters')
     else:
         logger.fatal("Invalid model name %s", args.model)
         os._exit(1)
@@ -58,14 +56,15 @@ def run(args):
 
     assert args.batch_size % distrib.world_size == 0
     args.batch_size //= distrib.world_size
-
     # Building datasets and loaders
+    # tr: train, cv: cross validation, tt: test
     tr_dataset = Trainset(
         args.dset.train, sample_rate=args.sample_rate, segment=args.segment, stride=args.stride, pad=args.pad)
     tr_loader = distrib.loader(
         tr_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
 
     # batch_size=1 -> use less GPU memory to do cv
+    # cv: cross validation, tt: test
     cv_dataset = Validset(args.dset.valid)
     tt_dataset = Validset(args.dset.test)
     cv_loader = distrib.loader(
@@ -85,8 +84,11 @@ def run(args):
         optimizer = torch.optim.Adam(
             model.parameters(), lr=args.lr, betas=(0.9, args.beta2))
     else:
-        logger.fatal('Invalid optimizer %s', args.optim)
-        os._exit(1)
+        if args.optim=='SGD':
+            optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
+        else:
+            logger.fatal('Invalid optimizer %s', args.optim)
+            os._exit(1)
 
     # Construct Solver
     solver = Solver(data, model, optimizer, args)

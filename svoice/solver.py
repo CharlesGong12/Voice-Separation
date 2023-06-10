@@ -1,10 +1,3 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-
-# Author: Eliya Nachmani (enk100), Yossi Adi (adiyoss), Lior Wolf
 
 import json
 import logging
@@ -15,12 +8,12 @@ import time
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR
+from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR,MultiStepLR
 
 from . import distrib
 from .separate import separate
 from .evaluate import evaluate
-from .models.sisnr_loss import cal_loss
+from .models.sisnr_loss import cal_loss,MultiResolutionSTFTLoss
 from .models.swave import SWave
 from .utils import bold, copy_state, pull_metric, serialize_model, swap_state, LogProgress
 
@@ -37,6 +30,7 @@ class Solver(object):
         self.dmodel = distrib.wrap(model)
         self.optimizer = optimizer
         if args.lr_sched == 'step':
+            # self.sched=MultiStepLR(self.optimizer, milestones=args.step.milestones, gamma=args.step.gamma)
             self.sched = StepLR(
                 self.optimizer, step_size=args.step.step_size, gamma=args.step.gamma)
         elif args.lr_sched == 'plateau':
@@ -73,6 +67,9 @@ class Solver(object):
 
         # for seperation tests
         self.args = args
+
+        self.mrstftloss = MultiResolutionSTFTLoss(factor_sc=args.stft_sc_factor,
+                                                  factor_mag=args.stft_mag_factor).to(self.device)
         self._reset()
 
     def _serialize(self, path):
@@ -202,6 +199,7 @@ class Solver(object):
             cnt = len(estimate_source)
             # apply a loss function after each layer
             with torch.autograd.set_detect_anomaly(True):
+                # 模型每个block都会输出
                 for c_idx, est_src in enumerate(estimate_source):
                     coeff = ((c_idx+1)*(1/cnt))
                     loss_i = 0
@@ -209,6 +207,27 @@ class Solver(object):
                     sisnr_loss, snr, est_src, reorder_est_src = cal_loss(
                         sources, est_src, lengths)
                     loss += (coeff * sisnr_loss)
+                    # STFT loss
+                    sum_source=None
+                    sum_est=None
+                    if self.args.stft_loss:
+                        # STFT loss
+                        # print(sources.shape,sources.squeeze(1).shape)
+                        # 音频有两个通道，[8,2,32000]，squeeze只针对大小为1的维度，因此不起作用
+                        # 必须要用clone！因为mrstloss中有inplace操作，+=,会导致梯度计算错误
+                        for channel in range(sources.shape[1]):
+                            sc_loss, mag_loss = self.mrstftloss(sources[:,channel,:].clone(), est_src[:,channel,:].clone())
+                            loss += (sc_loss+mag_loss)
+                            if sum_source is None:
+                                sum_source=sources[:,channel,:].clone()
+                                sum_est=est_src[:,channel,:].clone()
+                            else:
+                                sum_source=sources[:,channel,:].clone()+sum_source
+                                sum_est=est_src[:,channel,:].clone()+sum_est
+                        # MSE loss
+                        mse_loss = F.mse_loss(sum_source, sum_est)
+                        loss+=self.args.L2_factor*mse_loss
+
                 loss /= len(estimate_source)
 
                 if not cross_valid:

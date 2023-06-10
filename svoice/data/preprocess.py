@@ -1,9 +1,4 @@
-# The following piece of code was adapted from https://github.com/kaituoxu/Conv-TasNet
-# released under the MIT License.
-# Author: Kaituo XU
-# Created on 2018/12
 
-# Revised by: Eliya Nachmani (enk100), Yossi Adi (adiyoss), Lior Wolf
 
 import argparse
 import json

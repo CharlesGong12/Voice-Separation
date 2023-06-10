@@ -1,10 +1,4 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
 
-# Authors: Yossi Adi (adiyoss) and Alexandre Defossez (adefossez)
 
 import functools
 import logging
@@ -90,7 +84,7 @@ class LogProgress:
     Sort of like tqdm but using log lines and not as real time.
     """
 
-    def __init__(self, logger, iterable, updates=5, total=None,
+    def __init__(self, logger, iterable, updates=30, total=None,
                  name="LogProgress", level=logging.INFO):
         self.iterable = iterable
         self.total = total or len(iterable)
@@ -195,7 +189,28 @@ def remove_pad(inputs, inputs_lengths):
         elif dim == 2:  # [B, T]
             results.append(input[:length].view(-1).cpu().numpy())
     return results
-
+'''
+def overlap_add(frames, window_size, frame_stride):
+    """Reconstruct signal from overlapped frames.
+    Args:
+        frames (ndarray): Frames extracted from the signal, shape (n_frames, n_feat)
+        window_size (int): Size of window used for extracting frames
+        frame_stride (int): Stride of frames 
+    
+    Returns:
+        reconstructed (ndarray): Reconstructed signal, shape (signal_length,)
+    """
+    n_frames = frames.shape[0]
+    signal_length = (n_frames - 1) * frame_stride + window_size
+    reconstructed = np.zeros(signal_length)
+    
+    for i in range(n_frames):
+        frame = frames[i]
+        window_end = i * frame_stride + window_size
+        reconstructed[i * frame_stride : window_end] += frame
+        
+    return reconstructed
+'''
 
 def overlap_and_add(signal, frame_step):
     """Reconstructs a signal from a framed representation.
@@ -225,9 +240,12 @@ def overlap_and_add(signal, frame_step):
     subframes_per_frame = frame_length // subframe_length
     output_size = frame_step * (frames - 1) + frame_length
     output_subframes = output_size // subframe_length
-
+    # 容器，每个元素是一个subframe_length长度的向量
     subframe_signal = signal.view(*outer_dimensions, -1, subframe_length)
-
+    # frame:下标，从0开始，每隔subframe_step取subframe_length个元素
+    # Tensor.unfold(dimension, size, step)
+    # Returns a view of the original tensor which contains all slices of size 'size' from self tensor in the dimension 'dimension'.
+    # Step between two slices is given by step.
     frame = torch.arange(0, output_subframes).unfold(
         0, subframes_per_frame, subframe_step)
     frame = frame.clone().detach().long().to(signal.device)
@@ -235,7 +253,8 @@ def overlap_and_add(signal, frame_step):
     frame = frame.contiguous().view(-1)
 
     result = signal.new_zeros(
-        *outer_dimensions, output_subframes, subframe_length)
-    result.index_add_(-2, frame, subframe_signal)
+        *outer_dimensions, output_subframes, subframe_length)   # new_zeros()的维度与signal相同
+    # 把subframe_signal[i]加到result[frame[i]]中
+    result.index_add_(-2, frame, subframe_signal)   # index_add_()作用类似于+=。把frame中的元素作为下标，把subframe_signal中的元素加到result中
     result = result.view(*outer_dimensions, -1)
     return result

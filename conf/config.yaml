@@ -1,5 +1,5 @@
 defaults:
-  - dset: debug
+  - dset: wsj0_2
   - hydra/job_logging: colorlog
   - hydra/hydra_logging: colorlog
 
@@ -12,57 +12,62 @@ cv_maxlen: 8
 validfull: 1   # use entire samples at valid
 
 # Logging and printing, and does not impact training
-num_prints: 5
+# 每个epoch打印的次数
+num_prints: 60
 device: cuda
-num_workers: 5
+num_workers: 14
 verbose: 0
 show: 0   # just show the model and its size and exit
 
 # Checkpointing, by default automatically load last checkpoint
-checkpoint: True
+checkpoint: true
 continue_from: '' # Only pass the name of the exp, like `exp_dset=wham`
                   # this arg is ignored for the naming of the exp!
 continue_best: false
 restart: False # Ignore existing checkpoints
-checkpoint_file: checkpoint.th
-history_file: history.json
-samples_dir: samples
+checkpoint_file: checkpoint_stft.th
+history_file: history_stft.json
+# separation demos
+samples_dir: samples_stft
 
 # Other stuff
-seed: 2036
+seed: 112
 dummy:  # use this if you want twice the same exp, with a name
 
 # Evaluation stuff
-pesq: false # compute pesq?
-eval_every: 10
+pesq: False # compute pesq?
+eval_every: 1
 keep_last: 0
 
 # Optimization related
-optim: adam
-lr: 5e-4
+optim: adam  # can be either SGD or adam
+lr: 8e-4
 beta2: 0.999
-stft_loss: False
+# Gong Chao's new try
+stft_loss: True
 stft_sc_factor: .5
 stft_mag_factor: .5
-epochs: 100
-batch_size: 4
+L2_factor: .5
+
+epochs: 10
+batch_size: 8
 max_norm: 5
 # learning rate scheduling
 lr_sched: step # can be either step or plateau
 step: 
-  step_size: 2
-  gamma: 0.98
-plateau:
+  step_size: 4
+  gamma: 0.2
+plateau:  #早停
   factor: 0.5
   patience: 5
 
 # Models
 model: swave # either demucs or dwave
 swave:
-  N: 128
-  L: 8
-  H: 128
-  R: 6
+  N: 64 # tensor size
+  L: 8  # 1D conv kernel size
+  H: 64 # hidden size of LSTM
+  R: 4  # number of repeats of the MULCAT block
   C: 2
   input_normalize: False
 
@@ -78,7 +83,7 @@ world_size:
 # Hydra config
 hydra:
   run:
-    dir: ./outputs/exp_${hydra.job.override_dirname}
+    dir: ./outputs/stft_${hydra.job.override_dirname}
   job:
     config:
       # configuration for the ${hydra.job.override_dirname} runtime variable

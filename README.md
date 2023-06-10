@@ -1,26 +1,16 @@
 # SVoice: Speaker Voice Separation using Neural Nets
 
-We provide a [PyTorch][pytorch] implementation of our speaker voice separation research work. In [Voice Separation with an Unknown Number of Multiple Speakers][icml], we present a new method for separating a mixed audio sequence, in which multiple voices speak simultaneously. The new method employs gated neural networks that are trained to separate the voices at multiple processing steps, while maintaining the speaker in each output channel fixed. A different model is trained for every number of possible speakers, and the model with the largest number of speakers is employed to select the actual number of speakers in a given sample. Our method greatly outperforms the current state of the art, which, as we show, is not competitive for more than two speakers. Please note that this implementation does not contain the "IDloss" as described in the paper.
+I reproduced the paper of ICML 2020, "[Voice Separation with an Unknown Number of Multiple Speakers][icml]" and propose a new method based on it for separating audio sequences with multiple speakers.The structure of my model is based on the bidirectional LSTM structure in the original paper, but I add a new multi-resolution short-time Fourier transform loss to the original model to finally separate out audio with multiple channels to represent different speakers.
+Due to computational limitations, I only trained the model for two speakers and used a smaller number of parameters than the original author. However, experiments show that my proposed method improves the performance of the model.
 
-Audio samples can be found here: [Samples][web]
-
-<p align="center">
-<img src="./img/arch.png" alt="The architecture of our network. The audio is being convolved with a stack of 1D convolutions and reordered by cutting
-overlapping segments of length K in time, to obtain a 3D tensor. In our method, the RNN blocks are of the type of multiply and add.
-After each pair of blocks, we apply a convolution D to the copy of the activations, and obtain output channels by reordering the chunks
-and then using the overlap and add operator."
-width="100%"></p>
 
 ## Installation
 
 First, install Python 3.7 (recommended with Anaconda).
 
-Clone this repository and install the dependencies. We recommend using
-a fresh virtualenv or Conda environment.
 
 ```bash
 git clone git@github.com:fairinternal/svoice.git
-cd svoice
 pip install torch==1.6.0+cu101 torchvision==0.7.0+cu101 -f https://download.pytorch.org/whl/torch_stable.html
 pip install -r requirements.txt  
 ```
@@ -29,28 +19,24 @@ pip install -r requirements.txt
 
 ### Configuration
 
-We use [Hydra][hydra] to control all the training configurations. If you are not familiar with Hydra
+I use [Hydra][hydra] to control all the training configurations. If you are not familiar with Hydra
 we recommend visiting the Hydra [website][hydra-web].
 Generally, Hydra is an open-source framework that simplifies the development of research applications
 by providing the ability to create a hierarchical configuration dynamically.
 
 The config file with all relevant arguments for training our model can be found under the `conf` folder.
 Notice, under the `conf` folder, the `dset` folder contains the configuration files for
-the different datasets. You should see a file named `config.yaml` with the relevant configuration for the debug sample set.
+the different datasets that you maybe want to use. You should see a file named `config.yaml` with the relevant configuration for the debug sample set.
 
 You can pass options through the
 command line, for instance `python train.py lr=1e-4`.
-Please refer to [conf/config.yaml](conf/config.yaml) for a reference of the possible options.
-You can also directly edit the `config.yaml` file, although this is not recommended
+Or you can also directly edit the `config.yaml` file, although this is not recommended
 due to the way experiments are automatically named, as explained hereafter.
 
 ### Checkpointing
 
-Each experiment will get a unique name based on the command line options you passed.
-Restarting the same command will reuse the existing folder and automatically
-start from a previous checkpoint if possible. In order to ignore previous checkpoints,
-you must pass the `restart=1` option.
-Note that options like `device`, `num_workers`, etc. have no influence on the experiment name.
+Each experiment will get a unique name based on the command line options you passed. Go to config.yaml and change the `Hydra config` field to the name you want to use for your experiment.
+Restarting the same command will *** reuse the existing folder and automatically start from a previous checkpoint *** if possible. In order to ignore previous checkpoints, you must pass the `restart=1` option.
 
 ### Setting up a new dataset
 
@@ -58,7 +44,7 @@ If you want to train using a new dataset, you can:
 1. Create a separate config file for it.
 2. Place the new config files under the `dset` folder. Check [conf/dset/debug.yaml](conf/dset/debug.yaml)
 for more details on configuring your dataset.
-3. Point to it either in the general config file or via the command line, e.g. `./train.py dset=name_of_dset`.
+3. Point to it either in the general config file `config.yaml` or via the command line, e.g. `./train.py dset=name_of_dset`.
 
 You also need to generate the relevant `.json`files in the `egs/`folder.
 For that purpose you can use the `python -m svoice.data.audio` command that will
@@ -73,32 +59,6 @@ python -m svoice.data.audio $spk1 > $out/s1.json
 python -m svoice.data.audio $spk1 > $out/s1.json
 ```
 
-### Creating your own dataset
-
-We provide a dataset generation script in which users can create their own noisy and reverberant datasets. This dataset generation scripts follows the same recipes as described in our recent ICASSP-2021 paper: [Single Channel Voice Separation for Unknown Number of Speakers Under Reverberant and Noisy Settings][icassp]. Generation scripts can be found under: `scripts/make_dataset.py`. This data generation scripts gets as input the clean recordings, together with a set of noises and uses these recordings to generate a noisy-reverberant dataset. We synthesize room impulse responses using the following [RIR-Generator][nprirgen] package, which uses the image method, proposed by [Allen and Berkley in 1979][rir]. This method is one of the most frequently used methods in the acoustic signal processing community to create synthetic room impulse responses. 
-
-In case of generating a reverberant data, one needs to first install the [RIR-Generator][nprirgen] package. 
-
-For more details regarding possible arguments, please see:
-
-```
-usage: Mode [-h] [--in_path IN_PATH] [--out_path OUT_PATH]
-            [--noise_path NOISE_PATH] [--num_of_speakers NUM_OF_SPEAKERS]
-            [--num_of_scenes NUM_OF_SCENES] [--sec SEC] [--sr SR]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --in_path IN_PATH
-  --out_path OUT_PATH
-  --noise_path NOISE_PATH
-  --num_of_speakers NUM_OF_SPEAKERS
-                        no of speakers.
-  --num_of_scenes NUM_OF_SCENES
-                        no of examples.
-  --sec SEC
-  --sr SR
-```
-
 ## Usage
 ### Quick Start with Toy Example
 1. Run `./make_debug.sh` to generate json files for the toy dataset.
@@ -108,14 +68,8 @@ Notice, we already provided the yaml file for it. Can be found under `conf/dset/
 
 ### Data Structure
 The data loader reads both mixture and separated json files named: `mix.json` and `s<id>.json` where `<id>` is a running identifier. These files should contain all the paths to the wav files to be used to optimize and test the model along with their size (in frames).
-You can use `python -m svoice.data.audio FOLDER_WITH_WAV1 [FOLDER_WITH_WAV2 ...] > OUTPUT.json` to generate those files.
 You should generate the above files for both training and test sets (and validation set if provided). Once this is done, you should create a yaml (similarly to `conf/dset/debug.yaml`) with the dataset folders' updated paths.
-Please check [conf/dset/debug.yaml](conf/dset/debug.yaml) for more details.
-
-#### WSJ Mixture Generation 
-In case you have access to the origin wsj0 data (sphere format), you can generate the mixtures using the tools provided in the following [repository][convtas] (see usage section in the readme). 
-You can access the csv files containing all the metadata for generating the mixtures from the following [samples page][web].
-
+You can download part of the WSJ0-2mix dataset from [here][https://docs.google.com/presentation/d/1lskmHkti5tJjRvrl03mhuh_aMwfGA4M2Heayk5hL054/edit#slide=id.g80fe64a690_0_75], which is uploaded by Prof. Hongyi Li, Taiwan University.
 
 ### Training
 Training is simply done by launching the `train.py` script:
@@ -243,38 +197,6 @@ width="49%">
 <img src="./img/sisnr.png" alt="SI-SNRi curves of our model."
 width="49%">
 </p>
-
-
-## Citation
-If you find our code or models useful for your research, please cite it as:
-
-```
-@inproceedings{nachmani2020voice,
-  title={Voice Separation with an Unknown Number of Multiple Speakers},
-  author={Nachmani, Eliya and Adi, Yossi and Wolf, Lior},
-  booktitle={Proceedings of the 37th international conference on Machine learning},
-  year={2020}
-}
-```
-
-If you find our dataset generation pipeline useful, please cite it as:
-
-```
-@inproceedings{chazan2021single,
-  title={Single channel voice separation for unknown number of speakers under reverberant and noisy settings},
-  author={Chazan, Shlomo E and Wolf, Lior and Nachmani, Eliya and Adi, Yossi},
-  booktitle={ICASSP 2021-2021 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
-  pages={3730--3734},
-  year={2021},
-  organization={IEEE}
-}
-```
-
-## License
-This repository is released under the CC-BY-NC-SA 4.0. license as found in the [LICENSE](LICENSE) file.
-
-The file: `svoice/models/sisnr_loss.py` and `svoice/data/preprocess.py` were adapted from the [kaituoxu/Conv-TasNet][convtas] repository. It is an unofficial implementation of the [Conv-TasNet: Surpassing Ideal Time-Frequency Magnitude Masking for Speech Separation][convtas-paper] paper, released under the MIT License.
-Additionally, several input manipulation functions were borrowed and modified from the [yluo42/TAC][tac] repository, released under the CC BY-NC-SA 3.0 License.
 
 [icml]: https://arxiv.org/abs/2003.01531.pdf
 [icassp]: https://arxiv.org/pdf/2011.02329.pdf
