@@ -1,6 +1,6 @@
 # SVoice: Speaker Voice Separation using Neural Nets
 
-I reproduced the paper of ICML 2020, "[Voice Separation with an Unknown Number of Multiple Speakers][icml]" and propose a new method based on it for separating audio sequences with multiple speakers.The structure of my model is based on the bidirectional LSTM structure in the original paper, but I add a new multi-resolution short-time Fourier transform loss to the original model to finally separate out audio with multiple channels to represent different speakers.
+I reproduced the paper of ICML 2020, "[Voice Separation with an Unknown Number of Multiple Speakers][icml]" and propose a new method based on it for separating audio sequences with multiple speakers.**Thanks to the original author for the [code][https://github.com/facebookresearch/svoice/tree/main]**. The structure of my model is based on the bidirectional LSTM structure in the original paper, but I add a new multi-resolution short-time Fourier transform loss to the original model to finally separate out audio with multiple channels to represent different speakers.
 
 Due to computational limitations, I only trained the model for two speakers and used a smaller number of parameters than the original author. However, experiments show that the proposed method improves the SI-SNRi value of the model by 0.3.
 
