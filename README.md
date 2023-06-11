@@ -4,7 +4,7 @@ I reproduced the paper of ICML 2020, "[Voice Separation with an Unknown Number o
 
 Due to computational limitations, I only trained the model for two speakers and used a smaller number of parameters than the original author. However, experiments show that the proposed method improves the SI-SNRi value of the model by 0.3.
 
-Demos of the model can be found in [results](results).
+Demos of the model can be found in `results`.
 
 
 ## Installation
