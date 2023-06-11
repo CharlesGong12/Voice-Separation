@@ -1,7 +1,10 @@
 # SVoice: Speaker Voice Separation using Neural Nets
 
 I reproduced the paper of ICML 2020, "[Voice Separation with an Unknown Number of Multiple Speakers][icml]" and propose a new method based on it for separating audio sequences with multiple speakers.The structure of my model is based on the bidirectional LSTM structure in the original paper, but I add a new multi-resolution short-time Fourier transform loss to the original model to finally separate out audio with multiple channels to represent different speakers.
-Due to computational limitations, I only trained the model for two speakers and used a smaller number of parameters than the original author. However, experiments show that my proposed method improves the performance of the model.
+
+Due to computational limitations, I only trained the model for two speakers and used a smaller number of parameters than the original author. However, experiments show that the proposed method improves the SI-SNRi value of the model by 0.3.
+
+Demos of the model can be found in [results](results).
 
 
 ## Installation
@@ -174,27 +177,25 @@ optional arguments:
 Using the default configuration (same one as presented in our [paper][arxiv]), results should be similar to the following. 
 All reprted numbers are the Scale-Invariant Signal-to-Noise-Ratio improvment (SI-SNRi) over the input mixture.
 
-| Model       | #params | 2spk  | 3spk  | 4spk  | 5spk  |
-|-------------|---------|-------| ------| ------| ------|
-| ADANet      | 9.1M    | 10.5  | 9.1   |   -   |   -   |
-| DPCL++         | 13.6M   | 10.8  | 7.1   |   -   |   -   |
-| CBLDNN-GAT     | 39.5M   | 11.0  |   -   |   -   |   -   |
-| TasNet         | 32.0M   | 11.2  |   -   |   -   |   -   |
-| IBM            | -       | 13.0  | 12.8  | 10.6  | 10.3  |
-| IRM            | -       | 12.7  | 12.5  |  9.8  |  9.6  |
-| ConvTasNet     | 5.1M    | 15.3  | 12.7  |  8.5  |  6.8  |
-| FurcaNeXt      | 51.4M   | 18.4  |   -   |   -   |   -   |
-| DPRNN          | 3.6M    | 18.8  | 14.7  | 10.4  |  8.7  |
-| <b>Ours        | <b> 7.5M    | <b>20.1  | <b>16.9  | <b>12.9  | <b>10.6  |
+| Model            | #params | SI-SNRi |
+|------------------|---------|---------|
+| ADANet           | 9.1M    | 10.5    |
+| DPCL++           | 13.6M   | 10.8    |
+| CBLDNN-GAT       | 39.5M   | 11      |
+| TasNet           | 32.0M   | 11.2    |
+| ConvTasNet       | 5.1M    | 15.3    |
+| 原文             | 7.5M    | 20.1    |
+| 本文复现         | 4.8M    | 11.3    |
+| 复现+MRSTFT loss | 4.8M    | 11.6    |
 
 
 #### Learning Curves 
 The following learning cures were obtained using L=8 (the encoder kernel size): 
 
 <p align="center">
-<img src="./img/lc.png" alt="Training curves of our model."
+<img src="./img/loss.png" alt="Training curves of our model."
 width="49%">
-<img src="./img/sisnr.png" alt="SI-SNRi curves of our model."
+<img src="./img/sisnri.png" alt="SI-SNRi curves of our model."
 width="49%">
 </p>
 

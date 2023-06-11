@@ -132,13 +132,11 @@ models/
 *.th
 .DS_Store
 outputs/
-egs
 *.sh
 
 
 dataset/
 !make_wsj0_2.sh
-img/
 CODE_OF_CONDUCT.md
 CONTRIBUTING.md
 LICENSE
